@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Cairo } from "next/font/google";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -244,21 +244,144 @@ const packages = [
   },
 ];
 
+type PackageItem = (typeof packages)[number];
+
 export default function PackagesPage() {
   const pathname = usePathname();
   const [modalOpen, setModalOpen] = useState(false);
+  const [packagesData, setPackagesData] = useState<PackageItem[]>(packages);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<PackageItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    price: "",
+    currency: "ريال",
+    isBest: false,
+    isHighlighted: false,
+    isFeatured: false,
+    featuresText: "",
+  });
   const [subscribeOpen, setSubscribeOpen] = useState(false);
-  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<{
+    name: string;
+    price: string;
+  } | null>(null);
+  const [subscribeForm, setSubscribeForm] = useState({
+    email: "",
+    phone: "",
+    amount: "",
+    method: "wallet",
+    walletNumber: "",
+    bankAccount: "",
+    bankName: "",
+    ownerName: "",
+    note: "",
+  });
+  const [subscribeError, setSubscribeError] = useState("");
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  const openSubscribe = (title: string) => {
-    setSelectedPackage(title);
+  const openSubscribe = (pkg: { name: string; price: string }) => {
+    setSelectedPackage(pkg);
+    setSubscribeForm({
+      email: "",
+      phone: "",
+      amount: pkg.price.replace(/,/g, ""),
+      method: "wallet",
+      walletNumber: "",
+      bankAccount: "",
+      bankName: "",
+      ownerName: "",
+      note: "",
+    });
+    setSubscribeError("");
+    setShowSuccess(false);
     setSubscribeOpen(true);
+  };
+
+  const openEditPackage = (pkg: PackageItem) => {
+    setEditingPackage(pkg);
+    setEditForm({
+      name: pkg.name,
+      price: pkg.price,
+      currency: pkg.currency,
+      isBest: pkg.isBest,
+      isHighlighted: pkg.isHighlighted,
+      isFeatured: pkg.isFeatured,
+      featuresText: pkg.features.join("\n"),
+    });
+    setEditOpen(true);
+  };
+
+  const closeEditPackage = () => {
+    setEditOpen(false);
+    setEditingPackage(null);
+  };
+
+  const saveEditPackage = () => {
+    if (!editingPackage) return;
+    const updated: PackageItem = {
+      ...editingPackage,
+      name: editForm.name.trim() || editingPackage.name,
+      price: editForm.price.trim() || editingPackage.price,
+      currency: editForm.currency,
+      isBest: editForm.isBest,
+      isHighlighted: editForm.isHighlighted,
+      isFeatured: editForm.isFeatured,
+      features: editForm.featuresText
+        .split("\n")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    };
+    setPackagesData((prev) =>
+      prev.map((pkg) => (pkg.name === editingPackage.name ? updated : pkg))
+    );
+    closeEditPackage();
   };
 
   const closeSubscribe = () => {
     setSubscribeOpen(false);
     setSelectedPackage(null);
+    setSubscribeError("");
+    setShowSuccess(false);
   };
+
+  const saveSubscription = () => {
+    const amountValue = Number(subscribeForm.amount);
+    const validEmail = /\S+@\S+\.\S+/.test(subscribeForm.email);
+    const validPhone = subscribeForm.phone.trim().length >= 8;
+    const hasPaymentNumber =
+      subscribeForm.method === "wallet"
+        ? subscribeForm.walletNumber.trim().length >= 6
+        : subscribeForm.bankAccount.trim().length >= 6;
+
+    if (!validEmail) {
+      setSubscribeError("من فضلك أدخل بريدًا إلكترونيًا صحيحًا.");
+      return;
+    }
+    if (!validPhone) {
+      setSubscribeError("من فضلك أدخل رقم هاتف صحيح.");
+      return;
+    }
+    if (!amountValue || amountValue <= 0) {
+      setSubscribeError("من فضلك أدخل مبلغًا صحيحًا.");
+      return;
+    }
+    if (!hasPaymentNumber) {
+      setSubscribeError("من فضلك أدخل رقم المحفظة أو الحساب البنكي.");
+      return;
+    }
+
+    setSubscribeError("");
+    setShowSuccess(true);
+  };
+
+  useEffect(() => {
+    if (!showSuccess) return;
+    const timer = setTimeout(() => {
+      closeSubscribe();
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [showSuccess]);
 
   return (
     <div
@@ -449,11 +572,11 @@ export default function PackagesPage() {
               </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3">
-              {packages.map((pkg) => (
+            <div className="grid items-start gap-6 lg:grid-cols-3">
+              {packagesData.map((pkg) => (
                 <div
                   key={pkg.name}
-                  className={`relative overflow-hidden rounded-3xl border bg-gradient-to-b from-[#121722] to-[#0b0f16] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.35)] transition duration-300 hover:-translate-y-1 ${
+                  className={`relative overflow-hidden rounded-3xl border bg-gradient-to-b from-[#121722] to-[#0b0f16] p-6 shadow-[0_18px_40px_rgba(0,0,0,0.35)] transition duration-300 hover:-translate-y-1 hover:scale-[1.02] transform-gpu ${
                     pkg.isHighlighted
                       ? "border-[#22d3ee]/45 shadow-[0_0_0_1px_rgba(34,211,238,0.25),0_18px_40px_rgba(0,0,0,0.35)]"
                       : "border-white/10"
@@ -556,7 +679,7 @@ export default function PackagesPage() {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => openSubscribe(pkg.name)}
+                      onClick={() => openSubscribe(pkg)}
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#15cfc3] to-[#1ea4d5] px-4 py-2 text-sm font-semibold text-black shadow-[0_12px_24px_rgba(34,211,238,0.25)] transition hover:opacity-90"
                     >
                       اشتراك
@@ -577,6 +700,7 @@ export default function PackagesPage() {
                     <button
                       type="button"
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 hover:text-white"
+                      onClick={() => openEditPackage(pkg)}
                     >
                       تعديل
                       <svg
@@ -720,6 +844,169 @@ export default function PackagesPage() {
 
       <div
         className={`fixed inset-0 z-40 bg-black/60 transition ${
+          editOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={closeEditPackage}
+      />
+      <div
+        className={`fixed inset-0 z-50 flex items-center justify-center px-4 transition ${
+          editOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-gradient-to-b from-[#121722] to-[#0b0f16] p-6 shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
+          <div className="flex items-start justify-between">
+            <div className="text-right">
+              <h2 className="text-xl font-semibold text-white">تعديل الباقة</h2>
+              <p className="mt-1 text-sm text-white/50">
+                تحديث تفاصيل الباقة المحددة
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={closeEditPackage}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-white/60 hover:text-white"
+              aria-label="إغلاق"
+            >
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 6 6 18" />
+                <path d="M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-xs text-white/60">اسم الباقة</label>
+              <input
+                value={editForm.name}
+                onChange={(event) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                placeholder="مثال: الباقة الذهبية"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-white/60">السعر</label>
+              <input
+                value={editForm.price}
+                onChange={(event) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    price: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                placeholder="20000"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-white/60">العملة</label>
+              <input
+                value={editForm.currency}
+                onChange={(event) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    currency: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                placeholder="ريال"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={editForm.isBest}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      isBest: event.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 accent-[#22d3ee]"
+                />
+                الأكثر طلباً
+              </label>
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={editForm.isFeatured}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      isFeatured: event.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 accent-[#22d3ee]"
+                />
+                مميزة
+              </label>
+              <label className="flex items-center gap-2 text-sm text-white/70">
+                <input
+                  type="checkbox"
+                  checked={editForm.isHighlighted}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      isHighlighted: event.target.checked,
+                    }))
+                  }
+                  className="h-4 w-4 accent-[#22d3ee]"
+                />
+                مميزة بصرياً
+              </label>
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-xs text-white/60">المميزات</label>
+              <textarea
+                value={editForm.featuresText}
+                onChange={(event) =>
+                  setEditForm((prev) => ({
+                    ...prev,
+                    featuresText: event.target.value,
+                  }))
+                }
+                className="mt-2 h-40 w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                placeholder="كل ميزة في سطر منفصل"
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={closeEditPackage}
+              className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white/70 hover:text-white"
+            >
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={saveEditPackage}
+              className="flex-1 rounded-xl bg-[#1cc7c1] px-5 py-3 text-sm font-semibold text-[#042226] shadow-[0_10px_25px_rgba(28,199,193,0.35)] transition hover:bg-[#22d3ee]"
+            >
+              حفظ التعديلات
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className={`fixed inset-0 z-40 bg-black/60 transition ${
           subscribeOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={closeSubscribe}
@@ -729,12 +1016,12 @@ export default function PackagesPage() {
           subscribeOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
-        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-b from-[#121722] to-[#0b0f16] p-6 shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
+        <div className="w-full max-w-md max-h-[80vh] overflow-y-auto rounded-3xl border border-white/10 bg-gradient-to-b from-[#121722] to-[#0b0f16] p-6 shadow-[0_25px_60px_rgba(0,0,0,0.6)] [scrollbar-width:thin] [scrollbar-color:#1ea4d5_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#1ea4d5]/70 [&::-webkit-scrollbar-thumb]:hover:bg-[#22d3ee]">
           <div className="flex items-start justify-between">
             <div className="text-right">
               <h2 className="text-xl font-semibold text-white">تأكيد الاشتراك</h2>
               <p className="mt-1 text-sm text-white/50">
-                اشتراك في باقة {selectedPackage ?? "—"}
+                اشتراك في باقة {selectedPackage?.name ?? "—"}
               </p>
             </div>
             <button
@@ -759,10 +1046,176 @@ export default function PackagesPage() {
             </button>
           </div>
 
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/70">
-            سيتم إرسال طلب الاشتراك إلى فريق المبيعات للتواصل معك وإتمام
-            الإجراءات.
+          <div className="mt-4 text-xs text-white/60">
+            سيتم إرسال طلب الاشتراك لفريق المبيعات لإتمام الدفع والتفعيل.
           </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-xs text-white/60">البريد الإلكتروني</label>
+              <input
+                value={subscribeForm.email}
+                onChange={(event) =>
+                  setSubscribeForm((prev) => ({
+                    ...prev,
+                    email: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30"
+                placeholder="name@email.com"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-white/60">رقم الهاتف</label>
+              <input
+                value={subscribeForm.phone}
+                onChange={(event) =>
+                  setSubscribeForm((prev) => ({
+                    ...prev,
+                    phone: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30"
+                placeholder="05xxxxxxxx"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-white/60">المبلغ</label>
+              <input
+                type="number"
+                value={subscribeForm.amount}
+                onChange={(event) =>
+                  setSubscribeForm((prev) => ({
+                    ...prev,
+                    amount: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30"
+                placeholder={selectedPackage?.price ?? "0"}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-white/60">اسم صاحب الحساب</label>
+              <input
+                value={subscribeForm.ownerName}
+                onChange={(event) =>
+                  setSubscribeForm((prev) => ({
+                    ...prev,
+                    ownerName: event.target.value,
+                  }))
+                }
+                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30"
+                placeholder="مثال: محمد أحمد"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="text-xs text-white/60">طريقة الدفع</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSubscribeForm((prev) => ({
+                      ...prev,
+                      method: "wallet",
+                    }))
+                  }
+                  className={`rounded-xl border px-4 py-2 text-sm transition ${
+                    subscribeForm.method === "wallet"
+                      ? "border-[#22d3ee]/60 bg-[#0f2c2f] text-[#6ef0e6]"
+                      : "border-white/10 bg-white/5 text-white/70 hover:text-white"
+                  }`}
+                >
+                  محفظة
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSubscribeForm((prev) => ({
+                      ...prev,
+                      method: "bank",
+                    }))
+                  }
+                  className={`rounded-xl border px-4 py-2 text-sm transition ${
+                    subscribeForm.method === "bank"
+                      ? "border-[#22d3ee]/60 bg-[#0f2c2f] text-[#6ef0e6]"
+                      : "border-white/10 bg-white/5 text-white/70 hover:text-white"
+                  }`}
+                >
+                  حساب بنكي
+                </button>
+              </div>
+            </div>
+
+            {subscribeForm.method === "wallet" ? (
+              <div className="md:col-span-2">
+                <label className="text-xs text-white/60">رقم المحفظة</label>
+                <input
+                  value={subscribeForm.walletNumber}
+                  onChange={(event) =>
+                    setSubscribeForm((prev) => ({
+                      ...prev,
+                      walletNumber: event.target.value,
+                    }))
+                  }
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30"
+                  placeholder="أدخل رقم المحفظة"
+                />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="text-xs text-white/60">اسم البنك</label>
+                  <input
+                    value={subscribeForm.bankName}
+                    onChange={(event) =>
+                      setSubscribeForm((prev) => ({
+                        ...prev,
+                        bankName: event.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30"
+                    placeholder="مثال: بنك الراجحي"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-white/60">رقم الحساب</label>
+                  <input
+                    value={subscribeForm.bankAccount}
+                    onChange={(event) =>
+                      setSubscribeForm((prev) => ({
+                        ...prev,
+                        bankAccount: event.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30"
+                    placeholder="أدخل رقم الحساب البنكي"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="md:col-span-2">
+              <label className="text-xs text-white/60">ملاحظات (اختياري)</label>
+              <textarea
+                value={subscribeForm.note}
+                onChange={(event) =>
+                  setSubscribeForm((prev) => ({
+                    ...prev,
+                    note: event.target.value,
+                  }))
+                }
+                className="mt-2 min-h-[90px] w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#22d3ee]/30"
+                placeholder="أي تفاصيل إضافية"
+              />
+            </div>
+          </div>
+
+          {subscribeError ? (
+            <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">
+              {subscribeError}
+            </div>
+          ) : null}
 
           <div className="mt-6 flex items-center justify-between gap-3">
             <button
@@ -774,14 +1227,41 @@ export default function PackagesPage() {
             </button>
             <button
               type="button"
-              onClick={closeSubscribe}
+              onClick={saveSubscription}
               className="rounded-xl bg-gradient-to-r from-[#15cfc3] to-[#1ea4d5] px-4 py-2 text-sm font-semibold text-black shadow-[0_12px_24px_rgba(34,211,238,0.25)] transition hover:opacity-90"
             >
-              تأكيد الاشتراك
+              تأكيد الدفع
             </button>
           </div>
         </div>
       </div>
+
+      {showSuccess ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-sm rounded-3xl border border-emerald-400/40 bg-gradient-to-b from-[#0f1b17] to-[#0b1210] p-6 text-center shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_10px_30px_rgba(16,185,129,0.45)]">
+              <svg
+                className="h-8 w-8"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </div>
+            <h3 className="mt-4 text-lg font-semibold text-white">
+              تم الدفع بنجاح
+            </h3>
+            <p className="mt-2 text-sm text-emerald-100/80">
+              سيتم تفعيل الباقة والتواصل معك قريبًا.
+            </p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
