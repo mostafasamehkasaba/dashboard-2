@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Cairo } from "next/font/google";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -324,7 +324,7 @@ type Service = {
   title: string;
   description: string;
   features: string[];
-  icon: JSX.Element;
+  icon: ReactNode;
 };
 
 const defaultServiceIcon = (
