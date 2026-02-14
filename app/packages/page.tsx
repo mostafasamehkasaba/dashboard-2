@@ -556,7 +556,7 @@ export default function PackagesPage() {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => openSubscribe(pkg.title)}
+                      onClick={() => openSubscribe(pkg.name)}
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#15cfc3] to-[#1ea4d5] px-4 py-2 text-sm font-semibold text-black shadow-[0_12px_24px_rgba(34,211,238,0.25)] transition hover:opacity-90"
                     >
                       اشتراك
