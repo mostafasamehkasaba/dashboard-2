@@ -247,6 +247,18 @@ const packages = [
 export default function PackagesPage() {
   const pathname = usePathname();
   const [modalOpen, setModalOpen] = useState(false);
+  const [subscribeOpen, setSubscribeOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+
+  const openSubscribe = (title: string) => {
+    setSelectedPackage(title);
+    setSubscribeOpen(true);
+  };
+
+  const closeSubscribe = () => {
+    setSubscribeOpen(false);
+    setSelectedPackage(null);
+  };
 
   return (
     <div
@@ -544,6 +556,26 @@ export default function PackagesPage() {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
+                      onClick={() => openSubscribe(pkg.title)}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#15cfc3] to-[#1ea4d5] px-4 py-2 text-sm font-semibold text-black shadow-[0_12px_24px_rgba(34,211,238,0.25)] transition hover:opacity-90"
+                    >
+                      اشتراك
+                      <svg
+                        className="h-4 w-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
                       className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/80 hover:text-white"
                     >
                       تعديل
@@ -681,6 +713,71 @@ export default function PackagesPage() {
               className="flex-1 rounded-xl bg-[#1cc7c1] px-5 py-3 text-sm font-semibold text-[#042226] shadow-[0_10px_25px_rgba(28,199,193,0.35)] transition hover:bg-[#22d3ee]"
             >
               حفظ الباقة
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div
+        className={`fixed inset-0 z-40 bg-black/60 transition ${
+          subscribeOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={closeSubscribe}
+      />
+      <div
+        className={`fixed inset-0 z-50 flex items-center justify-center px-4 transition ${
+          subscribeOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <div className="w-full max-w-md rounded-3xl border border-white/10 bg-gradient-to-b from-[#121722] to-[#0b0f16] p-6 shadow-[0_25px_60px_rgba(0,0,0,0.6)]">
+          <div className="flex items-start justify-between">
+            <div className="text-right">
+              <h2 className="text-xl font-semibold text-white">تأكيد الاشتراك</h2>
+              <p className="mt-1 text-sm text-white/50">
+                اشتراك في باقة {selectedPackage ?? "—"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={closeSubscribe}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-white/60 hover:text-white"
+              aria-label="إغلاق"
+            >
+              <svg
+                className="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 6 6 18" />
+                <path d="M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/70">
+            سيتم إرسال طلب الاشتراك إلى فريق المبيعات للتواصل معك وإتمام
+            الإجراءات.
+          </div>
+
+          <div className="mt-6 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={closeSubscribe}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 transition hover:text-white"
+            >
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={closeSubscribe}
+              className="rounded-xl bg-gradient-to-r from-[#15cfc3] to-[#1ea4d5] px-4 py-2 text-sm font-semibold text-black shadow-[0_12px_24px_rgba(34,211,238,0.25)] transition hover:opacity-90"
+            >
+              تأكيد الاشتراك
             </button>
           </div>
         </div>
